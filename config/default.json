@@ -1,0 +1,5 @@
+{
+  "serverPort": 5000,
+  "mongoDbUrl": "mongodb+srv://sakur:Aerithff7@cluster0.3ilx3.mongodb.net/myFirstDatabase?retryWrites=true&w=majority",
+  "secretKey": "Super_stereo_sakur"
+}
