@@ -1,11 +1,11 @@
-const Router = require('express');
-const { check, validationResult } = require('express-validator');
-const User = require('./../models/User');
-const config = require('config');
-const bcrypt = require('bcrypt');
+const Router = require("express");
+const { check, validationResult } = require("express-validator");
+const User = require("./../models/User");
+const config = require("config");
+const bcrypt = require("bcrypt");
 const router = new Router();
-const jwt = require('jsonwebtoken');
-const authMiddleware = require('./../middleware/auth.middleware');
+const jwt = require("jsonwebtoken");
+const authMiddleware = require("./../middleware/auth.middleware");
 
 const passwordSize = {
   min: 3,
@@ -13,12 +13,12 @@ const passwordSize = {
 };
 
 router.post(
-  '/registration',
+  "/registration",
   [
-    check('email', 'incorrect email').isEmail(),
+    check("email", "incorrect email").isEmail(),
     check(
-      'password',
-      `Password must be longer than ${passwordSize.min} and shorter than ${passwordSize.max}`,
+      "password",
+      `Password must be longer than ${passwordSize.min} and shorter than ${passwordSize.max}`
     ).isLength({ min: passwordSize.min, max: passwordSize.max }),
   ],
   async (request, response) => {
@@ -27,7 +27,7 @@ router.post(
       if (!errors.isEmpty()) {
         return response
           .status(400)
-          .json({ message: 'Incorrect request', errors });
+          .json({ message: "Incorrect request", errors });
       }
 
       const { email, password } = request.body;
@@ -41,26 +41,38 @@ router.post(
       const hashPassword = await bcrypt.hash(password, passwordSize.max);
       const user = new User({ email, password: hashPassword });
       await user.save();
-      response.json({ message: `User was created` });
+
+      const token = jwt.sign({ id: user.id }, config.get("secretKey"), {
+        expiresIn: "24h",
+      });
+
+      return res.json({
+        status: 200,
+        message: `User was created`,
+        token,
+        user,
+      });
     } catch (error) {
       response.send({ message: `${request.body} and error is ${error}` });
     }
-  },
+  }
 );
 
-router.post('/login', async (req, res) => {
+router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
     const isPassValid = bcrypt.compareSync(password, user.password);
     if (!isPassValid) {
-      return res.status(400).json({ message: 'Invalid password' });
+      return res.status(400).json({ message: "Invalid password" });
     }
-    const token = jwt.sign({ id: user.id }, config.get('secretKey'), {
-      expiresIn: '24h',
+
+    const updatedUser = await User.findOne({ email });
+    const token = jwt.sign({ id: updatedUser.id }, config.get("secretKey"), {
+      expiresIn: "24h",
     });
 
     return res.json({
@@ -75,15 +87,15 @@ router.post('/login', async (req, res) => {
     });
   } catch (e) {
     console.log(e);
-    res.send({ message: 'Server error' });
+    res.send({ message: "Server error" });
   }
 });
 
-router.get('/auth', authMiddleware, async (req, res) => {
+router.get("/rehydrate", authMiddleware, async (req, res) => {
   try {
     const user = await User.findOne({ _id: req.user.id });
-    const token = jwt.sign({ id: user.id }, config.get('secretKey'), {
-      expiresIn: '1h',
+    const token = jwt.sign({ id: user.id }, config.get("secretKey"), {
+      expiresIn: "4h",
     });
     return res.json({
       token,
@@ -96,7 +108,7 @@ router.get('/auth', authMiddleware, async (req, res) => {
     });
   } catch (e) {
     console.log(e);
-    res.send({ message: 'Server error' });
+    res.send({ message: "Server error" });
   }
 });
 
